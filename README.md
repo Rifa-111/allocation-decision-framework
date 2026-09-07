@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Paper: AIiH 2026](https://img.shields.io/badge/Paper-AIiH%202026-blue.svg)](https://link.springer.com/chapter/10.1007/978-3-032-35393-1_24)
 
-A decision-theoretic framework for building allocation-aware healthcare AI systems that optimize for fairness and resource efficiency alongside predictive accuracy.
+A decision-theoretic framework for building allocation-aware healthcare AI systems that optimise for fairness and resource efficiency alongside predictive accuracy.
 
 ## Overview
 
@@ -37,7 +37,7 @@ pip install allocation-decision-framework
 ```python
 from allocation_framework import AllocationModel, FairnessLoss
 
-# Initialize model with fairness constraints
+# Initialise model with fairness constraints
 model = AllocationModel(
     fairness_weight=0.3,
     resource_constraint=100,  # e.g., 100 treatment slots
@@ -95,7 +95,7 @@ If you use this framework, please cite the original paper:
 
 ## Key Features
 
-✅ **Allocation-aware optimization** — Loss functions that encode resource and fairness constraints  
+✅ **Allocation-aware optimisation** — Loss functions that encode resource and fairness constraints  
 ✅ **Flexible fairness metrics** — Multiple fairness definitions (parity, equality of opportunity, etc.)  
 ✅ **Decision support tools** — Trade-off visualization and sensitivity analysis  
 ✅ **Production-ready** — Type hints, logging, and error handling  
