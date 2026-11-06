@@ -1,79 +1,65 @@
 # Allocation Decision Framework
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Paper: AIiH 2026](https://img.shields.io/badge/Paper-AIiH%202026-blue.svg)](https://link.springer.com/chapter/10.1007/978-3-032-35393-1_24)
+[![Licence: MIT](https://img.shields.io/badge/Licence-MIT-yellow.svg)](LICENSE)
+[![Paper: AIiH 2026](https://img.shields.io/badge/Paper-AIiH%202026-blue.svg)](https://doi.org/10.1007/978-3-032-35393-1_24)
 
-A decision-theoretic framework for building allocation-aware healthcare AI systems that optimise for fairness and resource efficiency alongside predictive accuracy.
+An **experimental, open-source Python research implementation** for exploring healthcare AI allocation decisions, resource limits and group fairness metrics. This software accompanies *Beyond Accuracy: A Decision-Theoretic Framework for Allocation-Aware Healthcare AI* (Ferzana, 2026).
 
-## Overview
+> **Research only.** This is not clinically validated, not production-ready and must not be used to make patient-care or real-world resource-allocation decisions.
 
-This framework implements the research presented in **"Beyond Accuracy: A Decision-Theoretic Framework for Allocation-Aware Healthcare AI"** (Ferzana, 2026), published in the *Artificial Intelligence and Intelligent Healthcare* proceedings at Imperial College London.
+## What is implemented
 
-### Key Contributions
+- Logistic regression baseline with optional **per-prediction-batch** top-k resource allocation
+- Group fairness metrics, including allocation parity and equality of opportunity
+- Allocation efficiency, coverage and group-level evaluation results
+- Standalone fairness-aware loss functions for research experimentation
+- Automated unit tests and a Python tutorial using synthetic data
 
-- **Allocation-aware loss functions** that explicitly model resource constraints and fairness objectives
-- **Decision-theoretic evaluation metrics** beyond accuracy
-- **Fairness-utility trade-off analysis** for healthcare resource allocation
-- **Practical implementations** for common healthcare allocation scenarios
+## Important limitations
 
-## Quick Start
+- `AllocationModel.fit()` trains a standard logistic regression baseline. **`fairness_weight` and `efficiency_weight` do not currently alter fitting or predictions.** Fairness is measured after prediction, not optimised by the fitted model.
+- `get_fairness_accuracy_tradeoff()` explicitly raises `NotImplementedError` until a valid optimisation approach is implemented. No trade-off curve is claimed.
+- `resource_constraint=k` limits allocations to at most `k` cases **within each call to `predict()`**. It is not a persistent capacity ledger across batches, and the allocation policy is not clinically validated.
+- The tutorial contains illustrative synthetic scenarios; its outcomes are not evidence of clinical effectiveness or fairness in real populations.
 
-### Installation
+## Installation
+
+Clone the repository and install it in a fresh Python environment:
 
 ```bash
-# Clone the repository
 git clone https://github.com/Rifa-111/allocation-decision-framework.git
 cd allocation-decision-framework
-
-# Install in development mode
-pip install -e ".[dev]"
-
-# Or install from PyPI (once published)
-pip install allocation-decision-framework
+python -m pip install -e ".[dev]"
+python -m pytest tests/ -q
 ```
 
-### Basic Usage
+The package is **not yet advertised as published on PyPI**. Use the GitHub installation above until a release is independently verified.
+
+## Minimal example
 
 ```python
-from allocation_framework import AllocationModel, FairnessLoss
+import numpy as np
+from sklearn.datasets import make_classification
+from allocation_framework import AllocationModel
 
-# Initialise model with fairness constraints
-model = AllocationModel(
-    fairness_weight=0.3,
-    resource_constraint=100,  # e.g., 100 treatment slots
-    fairness_metric='allocation_parity'
-)
-
-# Train with allocation-aware objectives
-model.fit(X_train, y_train, allocation_targets=targets)
-
-# Evaluate beyond accuracy
-results = model.evaluate(X_test, y_test)
-print(results.fairness_score)
-print(results.allocation_efficiency)
-print(results.predictive_accuracy)
+X, y = make_classification(n_samples=100, n_features=10, random_state=42)
+groups = np.array([0, 1] * 50)
+model = AllocationModel(resource_constraint=20, random_state=42)
+model.fit(X, y, groups=groups)
+results = model.evaluate(X, y, groups=groups)
+print(results)
+print("Allocated:", model.predict(X).sum())  # at most 20 in this batch
 ```
 
-## Documentation
+## Tutorial and documentation
 
-- [Installation Guide](docs/INSTALL.md)
-- [Framework Architecture](docs/ARCHITECTURE.md)
-- [API Reference](docs/API.md)
-- [Contributing Guidelines](CONTRIBUTING.md)
-
-## Tutorials & Examples
-
-Explore jupyter notebooks in `examples/`:
-
-- [`01_introduction.ipynb`](examples/01_introduction.ipynb) — Core concepts and fairness-accuracy trade-offs
-- [`02_synthetic_allocation.ipynb`](examples/02_synthetic_allocation.ipynb) — End-to-end example with synthetic data
-- [`03_fairness_metrics.ipynb`](examples/03_fairness_metrics.ipynb) — Computing and interpreting fairness metrics
-- [`04_resource_constraints.ipynb`](examples/04_resource_constraints.ipynb) — Modeling real-world resource limits
-- [`05_comparing_approaches.ipynb`](examples/05_comparing_approaches.ipynb) — Allocation vs. accuracy-only baselines
+- [Python introduction tutorial](examples/01_introduction.py) (synthetic examples)
+- [Installation guide](docs/INSTALL.md)
+- [API reference](docs/API.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## Citation
-
-If you use this framework, please cite the original paper:
 
 ```bibtex
 @inproceedings{ferzana2026beyondaccuracy,
@@ -83,73 +69,12 @@ If you use this framework, please cite the original paper:
   year = {2026},
   series = {Lecture Notes in Computer Science},
   volume = {16877},
-  pages = {XXX--XXX},
+  pages = {377--388},
   publisher = {Springer},
-  url = {https://link.springer.com/chapter/10.1007/978-3-032-35393-1_24}
+  doi = {10.1007/978-3-032-35393-1_24}
 }
 ```
 
-## Paper Abstract
+## Licence
 
-> Healthcare AI systems must balance predictive accuracy with fair resource allocation. We present a decision-theoretic framework that explicitly models allocation constraints and fairness objectives, moving beyond single-metric evaluation. Our approach quantifies fairness-accuracy trade-offs and provides principled methods for practitioners to navigate allocation decisions in resource-constrained settings.
-
-## Key Features
-
-✅ **Allocation-aware optimisation** — Loss functions that encode resource and fairness constraints  
-✅ **Flexible fairness metrics** — Multiple fairness definitions (parity, equality of opportunity, etc.)  
-✅ **Decision support tools** — Trade-off visualization and sensitivity analysis  
-✅ **Production-ready** — Type hints, logging, and error handling  
-✅ **Reproducible** — Full examples and benchmark datasets included  
-
-## Architecture
-
-```
-allocation-decision-framework/
-├── allocation_framework/
-│   ├── __init__.py
-│   ├── models/               # Core allocation models
-│   ├── metrics/              # Fairness & allocation metrics
-│   ├── losses/               # Custom loss functions
-│   ├── visualization/        # Trade-off plots & analysis
-│   └── utils/                # Utilities & helpers
-├── examples/                 # Jupyter notebooks
-├── tests/                    # Unit & integration tests
-├── docs/                     # Full documentation
-└── setup.py
-```
-
-## Requirements
-
-- Python 3.8+
-- NumPy, Pandas, Scikit-learn
-- PyTorch (optional, for deep learning variants)
-- Jupyter (for tutorials)
-
-See `requirements.txt` for full dependencies.
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development Setup
-
-```bash
-pip install -e ".[dev]"
-pytest tests/
-black allocation_framework/
-```
-
-## License
-
-MIT License — see [LICENSE](LICENSE) file for details.
-
-## Contact & Support
-
-- **Author:** Rifa Ferzana
-- **GitHub:** [@Rifa-111](https://github.com/Rifa-111)
-- **Issues:** [GitHub Issues](https://github.com/Rifa-111/allocation-decision-framework/issues)
-
----
-
-**Published:** August 2026 at AIiH 2026, Imperial College London  
-**Paper DOI:** [10.1007/978-3-032-35393-1_24](https://doi.org/10.1007/978-3-032-35393-1_24)
+MIT — see [LICENSE](LICENSE). Contributions and reproducibility reports are welcome via [GitHub Issues](https://github.com/Rifa-111/allocation-decision-framework/issues).
