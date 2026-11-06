@@ -7,8 +7,7 @@ setup(
     name="allocation-decision-framework",
     version="0.1.0",
     author="Rifa Ferzana",
-    author_email="rifa.ferzana@your-email.com",
-    description="A decision-theoretic framework for allocation-aware healthcare AI",
+        description="A decision-theoretic framework for allocation-aware healthcare AI",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Rifa-111/allocation-decision-framework",
@@ -50,11 +49,6 @@ setup(
             "jupyter>=1.0.0",
             "notebook>=6.4.0",
             "jupyterlab>=3.0.0",
-        ],
-    },
-    entry_points={
-        "console_scripts": [
-            "allocation-framework=allocation_framework.cli:main",
         ],
     },
 )
