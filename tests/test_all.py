@@ -400,3 +400,32 @@ class TestDataTypes:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestReleaseRegressions:
+    """Guard the documented resource-limited prototype behaviour."""
+
+    def test_zero_capacity_allocates_nothing(self, synthetic_data):
+        model = AllocationModel(resource_constraint=0)
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        assert model.predict(synthetic_data["X_test"]).sum() == 0
+
+    def test_batch_capacity_is_enforced(self, synthetic_data):
+        model = AllocationModel(resource_constraint=5)
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        assert model.predict(synthetic_data["X_test"]).sum() <= 5
+
+    def test_capacity_above_training_size(self, synthetic_data):
+        model = AllocationModel(resource_constraint=100000)
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        assert model.predict(synthetic_data["X_test"]).sum() <= len(synthetic_data["X_test"])
+
+    def test_negative_capacity_rejected(self):
+        with pytest.raises(ValueError):
+            AllocationModel(resource_constraint=-1)
+
+    def test_unimplemented_tradeoff_is_explicit(self, synthetic_data):
+        model = AllocationModel()
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        with pytest.raises(NotImplementedError):
+            model.get_fairness_accuracy_tradeoff(synthetic_data["X_test"], synthetic_data["y_test"])
