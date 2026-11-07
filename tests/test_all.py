@@ -63,7 +63,7 @@ class TestAllocationMetrics:
         groups = np.array([0, 0, 0, 0, 1, 1, 1, 1])
         
         score = allocation_parity(y_pred, groups)
-        assert 0 < score < 1, "Imperfect parity should be between 0 and 1"
+        assert score == 0.0, "Maximally unequal allocation rates should give parity 0"
     
     def test_allocation_parity_no_groups(self):
         """Test allocation parity without groups."""
@@ -244,22 +244,17 @@ class TestAllocationModel:
         assert model.resource_constraint == 100
     
     def test_fairness_accuracy_tradeoff(self, synthetic_data):
-        """Test fairness-accuracy trade-off computation."""
+        """Do not report a fabricated trade-off curve without optimisation."""
         model = AllocationModel()
         model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
-        
-        tradeoff = model.get_fairness_accuracy_tradeoff(
-            synthetic_data["X_test"],
-            synthetic_data["y_test"],
-            groups=synthetic_data["groups_test"],
-            weight_range=(0.0, 1.0),
-            n_steps=5,
-        )
-        
-        assert "weights" in tradeoff
-        assert "accuracy" in tradeoff
-        assert "fairness" in tradeoff
-        assert len(tradeoff["weights"]) == 5
+        with pytest.raises(NotImplementedError):
+            model.get_fairness_accuracy_tradeoff(
+                synthetic_data["X_test"],
+                synthetic_data["y_test"],
+                groups_val=synthetic_data["groups_test"],
+                weight_range=(0.0, 1.0),
+                n_steps=5,
+            )
 
 
 class TestFairnessLosses:
@@ -400,3 +395,32 @@ class TestDataTypes:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestReleaseRegressions:
+    """Guard the documented resource-limited prototype behaviour."""
+
+    def test_zero_capacity_allocates_nothing(self, synthetic_data):
+        model = AllocationModel(resource_constraint=0)
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        assert model.predict(synthetic_data["X_test"]).sum() == 0
+
+    def test_batch_capacity_is_enforced(self, synthetic_data):
+        model = AllocationModel(resource_constraint=5)
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        assert model.predict(synthetic_data["X_test"]).sum() <= 5
+
+    def test_capacity_above_training_size(self, synthetic_data):
+        model = AllocationModel(resource_constraint=100000)
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        assert model.predict(synthetic_data["X_test"]).sum() <= len(synthetic_data["X_test"])
+
+    def test_negative_capacity_rejected(self):
+        with pytest.raises(ValueError):
+            AllocationModel(resource_constraint=-1)
+
+    def test_unimplemented_tradeoff_is_explicit(self, synthetic_data):
+        model = AllocationModel()
+        model.fit(synthetic_data["X_train"], synthetic_data["y_train"])
+        with pytest.raises(NotImplementedError):
+            model.get_fairness_accuracy_tradeoff(synthetic_data["X_test"], synthetic_data["y_test"])

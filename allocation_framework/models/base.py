@@ -35,10 +35,13 @@ class AllocationResults:
 
 class AllocationModel:
     """
-    Allocation-aware healthcare AI model with fairness constraints.
+    Research prototype for allocation evaluation and batch-limited decisions.
     
-    This model extends standard ML approaches by explicitly incorporating
-    fairness constraints and resource allocation objectives.
+    Fits a standard logistic regression model. The fairness_weight and
+    efficiency_weight parameters are stored but do not currently affect
+    model training or decisions. Fairness is measured at evaluation time.
+    With a resource_constraint, predict() selects at most that many
+    highest-scoring items PER CALL; this is not a global capacity ledger.
     
     Parameters:
         fairness_weight (float): Weight for fairness objective (0-1).
@@ -87,6 +90,8 @@ class AllocationModel:
             raise ValueError(f"Unknown fairness_metric: {fairness_metric}")
         
         self.fairness_weight = fairness_weight
+        if resource_constraint is not None and (not isinstance(resource_constraint, (int, np.integer)) or resource_constraint < 0):
+            raise ValueError("resource_constraint must be a non-negative integer or None")
         self.resource_constraint = resource_constraint
         self.fairness_metric = fairness_metric
         self.efficiency_weight = efficiency_weight
@@ -147,9 +152,8 @@ class AllocationModel:
         if self.allocation_threshold is not None:
             self.threshold_ = self.allocation_threshold
         elif self.resource_constraint is not None:
-            # Threshold that allocates approximately resource_constraint items
-            proba = self.model_.predict_proba(X_scaled)[:, 1]
-            self.threshold_ = np.percentile(proba, 100 * (1 - self.resource_constraint / len(X)))
+            # Resource limits are enforced per prediction batch in predict().
+            self.threshold_ = 0.5
         else:
             # Default threshold at 0.5
             self.threshold_ = 0.5
@@ -184,6 +188,15 @@ class AllocationModel:
         X_scaled = self.scaler_.transform(X)
         proba = self.model_.predict_proba(X_scaled)[:, 1]
         
+        if self.resource_constraint is not None:
+            # Allocate to at most k highest-scoring samples in this batch.
+            # This is a batch-level ranking rule, not a clinical policy.
+            k = min(self.resource_constraint, len(proba))
+            allocations = np.zeros(len(proba), dtype=int)
+            if k:
+                selected = np.argsort(-proba, kind="stable")[:k]
+                allocations[selected] = 1
+            return allocations
         return (proba >= self.threshold_).astype(int)
     
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -341,25 +354,11 @@ class AllocationModel:
         if not self.is_fitted:
             raise RuntimeError("Model must be fitted before computing trade-offs")
         
-        weights = np.linspace(weight_range[0], weight_range[1], n_steps)
-        accuracies = []
-        fairnesses = []
-        
-        original_weight = self.fairness_weight
-        
-        for weight in weights:
-            self.fairness_weight = weight
-            results = self.evaluate(X_val, y_val, groups_val)
-            accuracies.append(results.predictive_accuracy)
-            fairnesses.append(results.fairness_score)
-        
-        self.fairness_weight = original_weight
-        
-        return {
-            "weights": weights,
-            "accuracy": np.array(accuracies),
-            "fairness": np.array(fairnesses),
-        }
+        raise NotImplementedError(
+            "Fairness-weight optimisation is not implemented in this research prototype. "
+            "Changing fairness_weight does not change fitted decisions; "
+            "a trade-off curve would therefore be misleading."
+        )
     
     def get_params(self, deep: bool = True) -> Dict[str, Any]:
         """Get parameters for this model (sklearn compatibility)."""
